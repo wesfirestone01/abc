@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "../../abc-multi-touch"
+		},
+		{
+			"path": ".."
+		}
+	],
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "deviceOrientation"
+	}
+}

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"/>
+ 
+  
+  <link rel="manifest" href="manifest.json" />
+
+  <title>chat</title>
+
+  <link rel="stylesheet" type="text/css" href="style.css">
+
+
+  <!-- <script src="lib/p5.js"></script> -->
+  <!-- <script src="lib/p5.sound.js"></script> -->
+  
+  <!-- include socket.io library: -->
+  <script src="/socket.io/socket.io.js"></script>  
+</head>
+
+<body>
+
+  <div class="main-wrapper">
+    <div id="nameWrapper">
+        <input type="text" placeholder="Username"><p></p>
+  <form id="chatForm">
+            <input id="newMessage" placeholder="Type something" autocomplete="off" />
+            <button type="submit">Send</button>    </div>
+<div class="People">
+  <a href="user.html" aria-label="Find Users">Find Users</a>
+</div>
+</a>    <div id="threadWrapper">
+        <ul>
+        </ul>
+    </div>
+    <div>
+       
+        </form>
+    </div>
+
+
+  </div>
+
+
+
+  <!-- the script tag below should always be at the bottom, right before the closing body tag -->
+  <script src="script.js"></script>
+ <script src="sketch.js"></script>
+  <script src="index.js"></script>
+  <script src="user.html"></script>
+
+
+
+</body>
+
+</html>
