@@ -1,8 +1,11 @@
-let alpha, beta, gamma = 0;
+let accX = 0;
+let accY = 0;
+let accZ = 0;
 
 function setup() {
   let canvas = createCanvas(windowWidth, windowHeight);
   canvas.parent("p5-canvas-container");
+  textSize(16);
 }
 
 function draw() {
@@ -11,48 +14,36 @@ function draw() {
   noStroke();
 
   push();
-  translate(width/2, height/2);
-  rotate(radians(alpha))
+  translate(width / 2, height / 2);
   
-  // black rectangle
+  // Example: rotate rectangle based on X acceleration
+  rotate(accX * 0.05); // tweak multiplier as needed
+  
+  // Black rectangle
   fill(0);
   rect(-100, -100, 200, 200);
   
-  // red circle
+  // Red circle
   fill(255, 0, 0);
-  circle(0, -100, 5)
+  circle(0, -100, 20);
   
   pop();
 
-  text("alpha: " + round(alpha), 10, 30);
-  text("beta: " + round(beta), 10, 40);
-  text("gamma: " + round(gamma), 10, 50);
-
+  // Display acceleration values
+  fill(255);
+  text("accX: " + accX.toFixed(2), 10, 30);
+  text("accY: " + accY.toFixed(2), 10, 50);
+  text("accZ: " + accZ.toFixed(2), 10, 70);
 }
 
-// P5 touch events: https://p5js.org/reference/#Touch
-
-function touchStarted() {
-  console.log(touches);
+// Update acceleration on devicemotion
+function startMotion() {
+  window.addEventListener('devicemotion', event => {
+    const acc = event.accelerationIncludingGravity || {};
+    accX = acc.x || 0;
+    accY = acc.y || 0;
+    accZ = acc.z || 0;
+  });
 }
 
-function touchMoved() {
-}
-
-function touchEnded() {
-}
-
-function windowResized(){
-  resizeCanvas(windowWidth, windowHeight);
-}
-
-function handleOrientation(eventData){
-  document.querySelector('#requestOrientationButton').style.display = "none";
-
-  console.log(eventData.alpha, eventData.beta, eventData.gamma);
-  
-  alpha = eventData.alpha;
-  beta = eventData.beta;
-  gamma = eventData.gamma;
-    
-}
+// Make sure to call startMotion() after user joins or requests permission

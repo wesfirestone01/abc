@@ -1,32 +1,48 @@
 const express = require('express');
-const http = require("http");
-const https = require("https");
-// to read certificates from the filesystem (fs)
-const fs = require("fs");
+const https = require('https');
+const fs = require('fs');
+const { WebSocketServer } = require('ws');
 
-const app = express(); // the server "app", the server behaviour
-const portHTTP = 3000; // port for http
-const portHTTPS = portHTTP+1; // port for https
+const app = express();
+const portHTTPS = 3001;
 
-// returning to the client anything that is
-// inside the public folder
+// Serve HTML + JS
 app.use(express.static('public'));
 
-
-// Creating object of key and certificate
-// for SSL
+// SSL certificates
 const options = {
-    key: fs.readFileSync("localhost-key.pem"),
-    cert: fs.readFileSync("localhost.pem"),
+  key: fs.readFileSync("keys-for-local-https/localhost-key.pem"),
+  cert: fs.readFileSync("keys-for-local-https/localhost.pem"),
 };
 
+// HTTPS server
+const httpsServer = https.createServer(options, app);
 
+// WebSocket server
+const wss = new WebSocketServer({ server: httpsServer });
 
-// Creating servers and make them listen at their ports:
-http.createServer(app).listen(portHTTP, function (req, res) {
-    console.log("HTTP Server started at port", portHTTP);
+wss.on('connection', ws => {
+  console.log("🌐 WebSocket client connected");
+
+  ws.on("message", msg => {
+    try {
+      const data = JSON.parse(msg.toString());
+      console.log("📡 JSON received:", data);
+
+      // Broadcast to all clients
+      wss.clients.forEach(client => {
+        if (client.readyState === ws.OPEN) {
+          client.send(JSON.stringify(data));
+        }
+      });
+    } catch {
+      console.warn("⚠️ Invalid JSON received:", msg.toString());
+    }
+  });
+
+  ws.on('close', () => console.log("❌ WebSocket client disconnected"));
 });
-https.createServer(options, app).listen(portHTTPS, function (req, res) {
-    console.log("HTTPS Server started at port", portHTTPS);
-});
 
+httpsServer.listen(portHTTPS, () =>
+  console.log(`✅ HTTPS + WSS server running on https://10.209.78.247:${portHTTPS}`)
+);

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Device Motion & Orientation</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; margin-top: 40px; }
+    #requestOrientationButton {
+      padding: 12px 24px; font-size: 18px; border: none; border-radius: 8px;
+      background-color: #007bff; color: white; cursor: pointer;
+    }
+    #requestOrientationButton:hover { background-color: #0056b3; }
+    #output { margin-top: 20px; font-size: 18px; }
+    #output p { margin: 4px 0; }
+  </style>
+</head>
+<body>
+
+<button id="requestOrientationButton">Enable Device Motion & Orientation</button>
+
+<div id="output">
+  <h3>Gyroscope (Rotation)</h3>
+  <p>Alpha: <span id="alpha">0</span></p>
+  <p>Beta: <span id="beta">0</span></p>
+  <p>Gamma: <span id="gamma">0</span></p>
+
+  <h3>Acceleration</h3>
+  <p>X: <span id="accX">0</span></p>
+  <p>Y: <span id="accY">0</span></p>
+  <p>Z: <span id="accZ">0</span></p>
+</div>
+  <script src="/socket.io/socket.io.js"></script>
+
+<script src="requestOrientation.js"></script>
+<script src="script.js"></script>
+
+</body>
+</html>
