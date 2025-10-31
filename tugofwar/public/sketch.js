@@ -5,7 +5,7 @@ let localId='';
 let players={};
 // let socket=io();
 // HK server:
-let socket=io({path: "wes/port-4210/socket.io"});
+let socket=io({path: "/wes/port-4210/socket.io"});
 
 
 
