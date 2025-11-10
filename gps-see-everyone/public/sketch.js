@@ -206,8 +206,8 @@ class SafezoneGPS {
   // Called every frame to smoothly move/lerp the safezone
   update() {
     // Lerp position
-    this.currentPos.x = lerp(this.currentPos.x, this.pos.x, 0.05);
-    this.currentPos.y = lerp(this.currentPos.y, this.pos.y, 0.05);
+    this.currentPos.x = this.pos.x;
+    this.currentPos.y = this.pos.y;
 
     // Lerp color
     this.currentColor = lerpColor(this.currentColor, this.targetColor, 0.02);

@@ -19,58 +19,69 @@ const HTTPSserver = https.createServer(options, app);
 const { Server } = require("socket.io");
 const io = new Server(HTTPSserver);
 
+// Track connected players
+let players = {}; // key: socket.id
 let currentlyConnected = [];
 
 // ====================== SOCKET CONNECTION ======================
 io.on("connection", (socket) => {
   console.log("New connection:", socket.id);
-
-  // Default state
-  socket.username = "Unknown";
-  socket.team = null;
   currentlyConnected.push(socket.id);
   console.log("Connected clients:", currentlyConnected);
 
   // ------------------- NEW PLAYER -------------------
   socket.on("newPlayer", (data) => {
-    if (!data || !data.username) {
-      console.log(`Player ${socket.id} did not send username`);
-      return;
-    }
+    if (!data || !data.username) return;
 
     socket.username = data.username;
     socket.team = Math.random() < 0.5 ? "blue" : "red";
 
+    // Store player server-side
+    players[socket.id] = {
+      id: socket.id,
+      username: socket.username,
+      team: socket.team,
+      lat: 0,
+      lon: 0
+    };
+
+    // Tell the client its assigned team
     socket.emit("assignTeam", { team: socket.team });
 
     console.log(`Player ${socket.username} connected (Team: ${socket.team})`);
 
-    // Tell others a new player joined
+    // Send all existing players to the new client
+    const otherPlayers = Object.values(players).filter(p => p.id !== socket.id);
+    socket.emit("existingPlayers", otherPlayers);
+
+    // Notify others about new player
     socket.broadcast.emit("newPlayerJoined", {
-      socketID: socket.id,
+      id: socket.id,
       username: socket.username,
-      team: socket.team,
+      team: socket.team
     });
   });
 
   // ------------------- LOCATION UPDATE -------------------
   socket.on("locationFromClient", (data) => {
-    if (!data) return;
+    if (!data || !players[socket.id]) return;
 
-    const locationInfo = {
-      lon: data.lon,
-      lat: data.lat,
-      username: data.username || socket.username,
-      team: data.team || socket.team,
-    };
+    players[socket.id].lat = data.lat;
+    players[socket.id].lon = data.lon;
 
     // Broadcast to everyone else
-    socket.broadcast.emit("locationFromServer", locationInfo);
+    socket.broadcast.emit("locationFromServer", {
+      username: players[socket.id].username,
+      team: players[socket.id].team,
+      lat: data.lat,
+      lon: data.lon
+    });
   });
 
   // ------------------- PROJECTILE FIRE -------------------
   socket.on("fireProjectile", (data) => {
-    // Example: data = { shooterName, targetName }
+    if (!data || !data.shooterName || !data.targetName) return;
+
     console.log(`Projectile fired: ${data.shooterName} -> ${data.targetName}`);
 
     // Relay to all other players
@@ -84,12 +95,16 @@ io.on("connection", (socket) => {
     const idx = currentlyConnected.indexOf(socket.id);
     if (idx > -1) currentlyConnected.splice(idx, 1);
 
+    // Remove from players list
+    delete players[socket.id];
+
+    // Notify others
     socket.broadcast.emit("deletePerson", { socketID: socket.id });
     console.log("Connected clients:", currentlyConnected);
   });
 });
 
-
+// ====================== SAFEZONE ======================
 let Safezone = {
   lat: 31.2260997,
   lon: 121.5338220,
@@ -121,7 +136,6 @@ setInterval(() => {
 
   io.emit("safezoneUpdate", Safezone);
 }, 1000);
-
 
 // ====================== START SERVER ======================
 HTTPSserver.listen(portHTTPS, () => {
