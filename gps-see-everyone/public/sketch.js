@@ -1,4 +1,3 @@
-// ===================== GPS GAME WITH SAFEZONE =====================
 let Players = [];       // All players (you + others)
 let Pings = [];         // Active projectiles
 let Safezones = [];     // Circular zones
@@ -34,27 +33,22 @@ function setup() {
   canvas = createCanvas(windowWidth, windowHeight);
   canvas.parent("p5-canvas-container");
 
-  username = prompt("Enter your name");
-  socket.emit("newPlayer", { username: username });
-
-  socket.on("assignTeam", (data) => {
-    console.log("Assigned to team:", data.team);
-    // you can also store it on the player object
-    me.team = data.team;
-  });  
-  
+  username = prompt("Enter your username") || "Player";
   me = new Player(username, color(0, 150, 255));
+  me.team = Math.random() < .5 ? "Red" : "Blue"; 
   Players.push(me);
 
   // Temporary test enemy nearby
-  
+  enemy = new Player("Enemy", color(255, 50, 50));
+  enemy.lat = me.lat + 0.0002;
+  enemy.lon = me.lon + 0.0002;
+  enemy.team = Math.random() < .5 ? "Red" : "Blue"; 
+  Players.push(enemy);
+
   // Add safezone (fixed GPS coordinate)
   let safeLat = 31.226099721335896;
   let safeLon = 121.53382201224352;
-
   Safezones.push(new SafezoneGPS(safeLat, safeLon, 60)); // radius in pixels
-  enemy = new Player("Enemy", color(255, 50, 50));
-  Players.push(enemy)
 
   requestGPS(); // From gps.js
 }
@@ -97,7 +91,7 @@ function draw() {
     if (!ping.active) Pings.splice(i, 1);
   }
 
-  drawLeaderboard(); 
+  drawLeaderboard();
 }
 
 // -------------- PLAYER ----------------
@@ -113,7 +107,6 @@ class Player {
     this.goalY = 0;
     this.rad = 12;
     this.alive = true;
-    this.team = team; 
   }
 
   recalculatePosition() {
@@ -231,7 +224,7 @@ socket.on("locationFromServer", (data) => {
   other.recalculatePosition();
 });
 
-
+// -------------- TOUCH ----------------
 function touchStarted() {
   if (!enemy.alive) return false;
 
@@ -246,11 +239,11 @@ function touchStarted() {
   return false;
 }
 
+// -------------- RESIZE ----------------
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
-}
+}// ===================== GPS GAME WITH SAFEZONE =====================
 
-// ===================== LEADERBOARD (2 TEAMS) =====================
 function drawLeaderboard() {
 
   let alivePlayers = Players.filter(p => p.alive);

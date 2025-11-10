@@ -1,98 +1,77 @@
 const express = require('express');
-
 const https = require("https");
-// to read certificates from the filesystem (fs)
 const fs = require("fs");
-const app = express(); // the server "app", the server behaviour
-const portHTTPS = 3010; // YOUR port
+const app = express();
+const portHTTPS = 3010;
 
-// returning to the client anything that is
-// inside the public folder
+// Serve static files
 app.use(express.static('public'));
 
-
-// Creating object of key and certificate
-// for SSL
+// SSL certificates
 const options = {
     key: fs.readFileSync("localhost-key.pem"),
     cert: fs.readFileSync("localhost.pem"),
 };
 
-let HTTPSserver = https.createServer(options, app)
+const HTTPSserver = https.createServer(options, app);
 
+// Socket.io setup
+const { Server } = require('socket.io');
+const io = new Server(HTTPSserver);
 
-const { Server } = require('socket.io'); // include library
-const io = new Server(HTTPSserver); // start socket io 
-
-let currentlyConntected = []; //list of socket IDs of copnnected clients
+let currentlyConnected = [];
 
 io.on('connection', (socket) => {
+    // Default username & team
+    socket.username = "Unknown";
+    socket.team = null;
 
-    // we manage the connection inside here
-    // console.log('a user connected', socket.id);
-    // keep track of all clients connected
-    io.emit('message', 'Welcome to the game!');
+    currentlyConnected.push(socket.id);
+    console.log("Connected clients:", currentlyConnected);
 
-    currentlyConntected.push(socket.id);
-    console.log(currentlyConntected);
-    
+    // New player joins
+    socket.on("newPlayer", (data) => {
+        socket.username = data.username;
+        socket.team = Math.random() < 0.5 ? "blue" : "red";
 
-    socket.on("locationFromClient", function(data){
-         console.log("got new location", data);
-        // share the location with everybody except
-        // the sender
-       let locationInfo = {
-        lon: data.lon,
-        lat: data.lat,
-        username: data.username,  // include username
-        team: data.team           // include team
-    };
+        socket.emit("assignTeam", { team: socket.team });
+        socket.broadcast.emit("newPlayerJoined", { 
+            socketID: socket.id, 
+            username: socket.username, 
+            team: socket.team 
+        });
+
+        console.log(`Player ${socket.username} connected, team: ${socket.team}`);
+    });
+
+    // Location updates
+    socket.on("locationFromClient", (data) => {
+        console.log("Got new location", data);
+
+        let locationInfo = {
+            lon: data.lon,
+            lat: data.lat,
+            username: data.username,
+            team: data.team
+        };
         socket.broadcast.emit("locationFromServer", locationInfo);
+    });
 
-    })
+    // Disconnect
+    socket.on("disconnect", () => {
+        console.log(`Player ${socket.username} disconnected`);
 
-socket.on("newPlayer", (data) => {
-    let team = Math.random() < 0.5 ? "blue" : "red";
-    socket.username = data.username;
-    socket.team = team;
-    console.log("You are on", team);
+        const idx = currentlyConnected.indexOf(socket.id);
+        if(idx > -1) currentlyConnected.splice(idx, 1);
 
-    socket.emit("assignTeam", {team: team});
-    socket.broadcast.emit("newPlayerJoined", {socketID: socket.id, username: data.username, team: team});
- 
-  });
-
-    // DISCONNECT
-    socket.on("disconnect", function(){
-        console.log("someone disconnected", socket.id)
-
-        // delete socket ID from the global array
-        // that keeps track of all connected clients 
-
-        let idx = currentlyConntected.indexOf(socket.id);
-        if(idx > -1){
-            socket.broadcast.emit("deletePerson", {socketID: socket.id});
-
-            currentlyConntected.splice(idx, 1);
-            console.log(currentlyConntected);
-        }
-    })
-
-})
-
-
-
-// additional express server endpoints could be made here:
-
-
-
-// Creating https server by passing
-// options and app object
-HTTPSserver.listen(portHTTPS, function (req, res) {
-    console.log("HTTPS Server started at port", portHTTPS);
+        socket.broadcast.emit("deletePerson", { socketID: socket.id });
+        console.log("Connected clients:", currentlyConnected);
+    });
 });
 
-
-
+// Start HTTPS server
+HTTPSserver.listen(portHTTPS, () => {
+    console.log("HTTPS Server started at port", portHTTPS);
+});
 
 
