@@ -7,7 +7,7 @@ let canvas;
 let currentLongitude = 0;
 let currentLatitude = 0;
 let mapInit = false;
-let projectile_speed = 0.05;
+let projectile_speed = 0.02; // increased for visibility
 let me;
 let enemy;
 let username = "";
@@ -33,22 +33,26 @@ function setup() {
   canvas = createCanvas(windowWidth, windowHeight);
   canvas.parent("p5-canvas-container");
 
-  username = prompt("Enter your username") || "Player";
-  me = new Player(username, color(0, 150, 255));
-  me.team = Math.random() < .5 ? "Red" : "Blue"; 
-  Players.push(me);
+  username = prompt("Enter your name") || "Player";
+  socket.emit("newPlayer", { username: username });
 
-  // Temporary test enemy nearby
-  enemy = new Player("Enemy", color(255, 50, 50));
-  enemy.lat = me.lat + 0.0002;
-  enemy.lon = me.lon + 0.0002;
-  enemy.team = Math.random() < .5 ? "Red" : "Blue"; 
-  Players.push(enemy);
+  me = new Player(username, color(0, 150, 255));
+  Players.push(me);
 
   // Add safezone (fixed GPS coordinate)
   let safeLat = 31.226099721335896;
   let safeLon = 121.53382201224352;
-  Safezones.push(new SafezoneGPS(safeLat, safeLon, 60)); // radius in pixels
+  const safezoneRadius = 60;
+  Safezones.push(new SafezoneGPS(safeLat, safeLon, safezoneRadius)); // radius in pixels
+
+  // ===================== TEST ENEMY =====================
+  // Spawn enemy inside the safezone for testing
+  const sz = Safezones[0];
+  enemy = new Player("TestEnemy", color(255, 50, 50));
+  enemy.lat = sz.lat; // center of safezone
+  enemy.lon = sz.lon;
+  enemy.team = "Red";
+  Players.push(enemy);
 
   requestGPS(); // From gps.js
 }
@@ -75,7 +79,10 @@ function draw() {
   rect(0, 0, width, height);
 
   // update + draw safezones
-  for (let s of Safezones) s.display();
+  for (let s of Safezones) {
+    s.update();
+    s.display();
+  }
 
   // update + draw players
   for (let p of Players) {
@@ -107,6 +114,7 @@ class Player {
     this.goalY = 0;
     this.rad = 12;
     this.alive = true;
+    this.team = null;
   }
 
   recalculatePosition() {
@@ -130,6 +138,8 @@ class Player {
 
   fireAt(target) {
     if (this.alive && target.alive) {
+      this.recalculatePosition();
+      target.recalculatePosition();
       Pings.push(new PingProjectile(this, target));
     }
   }
@@ -148,19 +158,19 @@ class PingProjectile {
   update() {
     if (!this.active) return;
 
-    // Check if target is inside any safezone
+    // 1️⃣ Move toward target
+    this.x = lerp(this.x, this.target.x, projectile_speed);
+    this.y = lerp(this.y, this.target.y, projectile_speed);
+
+    // 2️⃣ Check if projectile overlaps any safezone
     for (let s of Safezones) {
-      if (s.isTouching(this.target.x, this.target.y)) {
-        this.active = false;
+      if (s.isTouching(this.x, this.y)) {
+        this.active = false;   // disappear if projectile touches safezone
         return;
       }
     }
 
-    // Move toward target
-    this.x = lerp(this.x, this.target.x, projectile_speed);
-    this.y = lerp(this.y, this.target.y, projectile_speed);
-
-    // Check hit
+    // 3️⃣ Check if projectile hits the target
     let d = dist(this.x, this.y, this.target.x, this.target.y);
     if (d < this.target.rad) {
       this.active = false;
@@ -170,40 +180,78 @@ class PingProjectile {
 
   display() {
     if (!this.active) return;
-    fill(255, 255, 0);
+    fill(255, 255, 0, 150);
     noStroke();
     ellipse(this.x, this.y, 10);
   }
 }
 
+
 // -------------- SAFEZONE ----------------
 class SafezoneGPS {
-  constructor(lat, lon, r) {
-    this.lat = lat;
-    this.lon = lon;
-    this.r = r; // radius in pixels
+  constructor() {
+    // Initial values (will be overwritten by server)
+    this.lat = 0;
+    this.lon = 0;
+    this.radius = 60;
     this.pos = createVector(0, 0);
+
+    this.currentPos = createVector(0, 0);
+    this.currentColor = color(0, 255, 0, 90); // default green
+    this.targetLat = 0;
+    this.targetLon = 0;
+    this.targetColor = this.currentColor;
   }
 
+  // Called every frame to smoothly move/lerp the safezone
+  update() {
+    // Lerp position
+    this.currentPos.x = lerp(this.currentPos.x, this.pos.x, 0.05);
+    this.currentPos.y = lerp(this.currentPos.y, this.pos.y, 0.05);
+
+    // Lerp color
+    this.currentColor = lerpColor(this.currentColor, this.targetColor, 0.02);
+  }
+
+  // Recalculate pixel position from lat/lon
   recalculatePosition() {
-    if (mapInit) {
-      let pos = myMap.latLngToPixel(this.lat, this.lon);
-      this.pos.set(pos.x, pos.y);
-    }
+    if (!mapInit) return;
+    let pixelPos = myMap.latLngToPixel(this.lat, this.lon);
+    this.pos.set(pixelPos.x, pixelPos.y);
   }
 
+  // Draw safezone
   display() {
-    if (mapInit) this.recalculatePosition();
-    fill(100, 255, 150, 90);
+    this.update();
+    fill(this.currentColor);
     noStroke();
-    ellipse(this.pos.x, this.pos.y, this.r * 2);
+    ellipse(this.currentPos.x, this.currentPos.y, this.radius * 2);
   }
 
+  // Check if a point touches the safezone
   isTouching(x, y) {
-    if (mapInit) this.recalculatePosition();
-    return dist(this.pos.x, this.pos.y, x, y) < this.r;
+    return dist(this.currentPos.x, this.currentPos.y, x, y) < this.radius;
+  }
+
+  // Called when server emits a new safezone update
+  applyServerUpdate(data) {
+    this.lat = data.lat;
+    this.lon = data.lon;
+    this.radius = data.radius || 60;
+
+    this.recalculatePosition();
+
+    // Convert server color string to p5 color
+    if (data.color === "green") this.targetColor = color(100, 255, 150, 90);
+    else if (data.color === "yellow") this.targetColor = color(255, 255, 0, 90);
+    else if (data.color === "red") this.targetColor = color(255, 100, 100, 90);
   }
 }
+
+socket.on("safezoneUpdate", (data) => {
+  if (!Safezones[0]) Safezones.push(new SafezoneGPS());
+  Safezones[0].applyServerUpdate(data);
+});
 
 // -------------- MAP ----------------
 function updateMapContent() {
@@ -232,7 +280,8 @@ function touchStarted() {
     let d = dist(t.x, t.y, enemy.x, enemy.y);
     if (d < enemy.rad) {
       me.fireAt(enemy);
-      console.log("🔥 Projectile fired at enemy");
+      socket.emit("fireProjectile", { shooterName: me.name, targetName: enemy.name });
+      console.log("Projectile fired at enemy");
       break;
     }
   }
@@ -242,12 +291,11 @@ function touchStarted() {
 // -------------- RESIZE ----------------
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
-}// ===================== GPS GAME WITH SAFEZONE =====================
+}
 
+// -------------- LEADERBOARD ----------------
 function drawLeaderboard() {
-
   let alivePlayers = Players.filter(p => p.alive);
-
   let redTeam = alivePlayers.filter(p => p.team === "Red");
   let blueTeam = alivePlayers.filter(p => p.team === "Blue");
 
@@ -259,28 +307,14 @@ function drawLeaderboard() {
   fill(255);
   textSize(14);
   textAlign(LEFT, TOP);
-  text("🏆 Team Leaderboard", 20, 15);
+  text("Team Leaderboard", 20, 15);
 
   let y = 40;
   fill(255, 80, 80);
   textSize(13);
   text(`Red Team (${redTeam.length})`, 25, y);
   for (let p of redTeam) {
-    if (p.alive) {
-      fill(0);
-  } else {
-      fill(255,0,0);
-    }
-
-    text(`• ${p.username}`,35,y);
-    y+=14;
-     
-}
-
-  y += 18;
-  fill(255);
-  textSize(12);
-  for (let p of redTeam) {
+    fill(p.alive ? 0 : color(255,0,0));
     text(`• ${p.username}`, 35, y);
     y += 14;
   }
@@ -290,14 +324,8 @@ function drawLeaderboard() {
   textSize(13);
   text(`Blue Team (${blueTeam.length})`, 25, y);
   for (let p of blueTeam) {
-   if(p.alive) {
-    fill(0);
-   } else {
-    fill(255,0,0);
-   }
-
-   text(`• ${p.username}`,width-25,y)
-   y+=14;
-
+    fill(p.alive ? 0 : color(255,0,0));
+    text(`• ${p.username}`, 35, y);
+    y += 14;
   }
 }
