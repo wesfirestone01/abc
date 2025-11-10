@@ -34,20 +34,27 @@ function setup() {
   canvas = createCanvas(windowWidth, windowHeight);
   canvas.parent("p5-canvas-container");
 
-  username = prompt("Enter your username") || "Player";
+  username = prompt("Enter your name");
+  socket.emit("newPlayer", { username: username });
+
+  socket.on("assignTeam", (data) => {
+    console.log("Assigned to team:", data.team);
+    // you can also store it on the player object
+    me.team = data.team;
+  });  
+  
   me = new Player(username, color(0, 150, 255));
   Players.push(me);
 
   // Temporary test enemy nearby
-  enemy = new Player("Enemy", color(255, 50, 50));
-  enemy.lat = me.lat + 0.0002;
-  enemy.lon = me.lon + 0.0002;
-  Players.push(enemy);
-
+  
   // Add safezone (fixed GPS coordinate)
   let safeLat = 31.226099721335896;
   let safeLon = 121.53382201224352;
+
   Safezones.push(new SafezoneGPS(safeLat, safeLon, 60)); // radius in pixels
+  enemy = new Player("Enemy", color(255, 50, 50));
+  Players.push(enemy)
 
   requestGPS(); // From gps.js
 }
@@ -89,6 +96,8 @@ function draw() {
     ping.display();
     if (!ping.active) Pings.splice(i, 1);
   }
+
+  drawLeaderboard(); 
 }
 
 // -------------- PLAYER ----------------
@@ -104,6 +113,7 @@ class Player {
     this.goalY = 0;
     this.rad = 12;
     this.alive = true;
+    this.team = team; 
   }
 
   recalculatePosition() {
@@ -221,7 +231,7 @@ socket.on("locationFromServer", (data) => {
   other.recalculatePosition();
 });
 
-// -------------- TOUCH ----------------
+
 function touchStarted() {
   if (!enemy.alive) return false;
 
@@ -236,7 +246,65 @@ function touchStarted() {
   return false;
 }
 
-// -------------- RESIZE ----------------
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
+}
+
+// ===================== LEADERBOARD (2 TEAMS) =====================
+function drawLeaderboard() {
+
+  let alivePlayers = Players.filter(p => p.alive);
+
+  let redTeam = alivePlayers.filter(p => p.team === "Red");
+  let blueTeam = alivePlayers.filter(p => p.team === "Blue");
+
+  let boxHeight = 80 + (redTeam.length + blueTeam.length) * 14;
+  fill(0, 150);
+  noStroke();
+  rect(10, 10, 220, boxHeight, 10);
+
+  fill(255);
+  textSize(14);
+  textAlign(LEFT, TOP);
+  text("🏆 Team Leaderboard", 20, 15);
+
+  let y = 40;
+  fill(255, 80, 80);
+  textSize(13);
+  text(`Red Team (${redTeam.length})`, 25, y);
+  for (let p of redTeam) {
+    if (p.alive) {
+      fill(0);
+  } else {
+      fill(255,0,0);
+    }
+
+    text(`• ${p.username}`,35,y);
+    y+=14;
+     
+}
+
+  y += 18;
+  fill(255);
+  textSize(12);
+  for (let p of redTeam) {
+    text(`• ${p.username}`, 35, y);
+    y += 14;
+  }
+
+  y += 10;
+  fill(80, 120, 255);
+  textSize(13);
+  text(`Blue Team (${blueTeam.length})`, 25, y);
+  for (let p of blueTeam) {
+   if(p.alive) {
+    fill(0);
+   } else {
+    fill(255,0,0);
+   }
+
+   text(`• ${p.username}`,width-25,y)
+   y+=14;
+
+  }
 }

@@ -31,6 +31,8 @@ io.on('connection', (socket) => {
     // we manage the connection inside here
     // console.log('a user connected', socket.id);
     // keep track of all clients connected
+    io.emit('message', 'Welcome to the game!');
+
     currentlyConntected.push(socket.id);
     console.log(currentlyConntected);
     
@@ -49,17 +51,15 @@ io.on('connection', (socket) => {
 
     })
 
-
-  socket.on("newPlayer", (data) => {
+socket.on("newPlayer", (data) => {
     let team = Math.random() < 0.5 ? "blue" : "red";
     socket.username = data.username;
     socket.team = team;
+    console.log("You are on", team);
 
-    // Send back team assignment
     socket.emit("assignTeam", {team: team});
-
-    // Broadcast new player to others
     socket.broadcast.emit("newPlayerJoined", {socketID: socket.id, username: data.username, team: team});
+ 
   });
 
     // DISCONNECT
