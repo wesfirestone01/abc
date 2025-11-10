@@ -1,41 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"/>
- 
-  
-  <link rel="manifest" href="manifest.json" />
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
 
   <title>CCLab Project</title>
 
-  <link rel="stylesheet" type="text/css" href="style.css">
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" type="text/css" href="style.css" />
 
-
+  <!-- Core libraries -->
   <script src="lib/p5.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/p5.play/lib/p5.play.min.js"></script>
-
+  <script src="https://cdn.jsdelivr.net/npm/p5.play@3.0.4/lib/p5.play.min.js"></script>
   <script src="lib/mappa.js" type="text/javascript"></script>
-  <script src="socket.io/socket.io.js"></script>  
-  <!-- <script src="lib/p5.sound.js"></script> -->
-  
-
+  <script src="/socket.io/socket.io.js"></script>
 </head>
 
 <body>
-  <button id="requestOrientationButton" onclick="requestGPS()" style="position:fixed;top:20px;left:20px;">request GPS</button>
+  <button id="requestOrientationButton"
+          onclick="requestGPS()"
+          style="position:fixed;top:20px;left:20px;">
+    request GPS
+  </button>
 
-  <div class="main-wrapper">
+  <div id="p5-canvas-container"></div>
 
-    <div id="p5-canvas-container">
-    </div>
+  <!-- Important: load GPS logic first, before p5 setup -->
+  <script src="requestGPS.js"></script>
 
-  </div>
-
-
-  <script src="requestGPS.js"></script> 
+  <!-- Load your main game sketch after GPS is defined -->
   <script src="sketch.js"></script>
 </body>
-
 </html>
