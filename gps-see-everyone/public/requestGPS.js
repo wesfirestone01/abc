@@ -41,10 +41,10 @@ function requestGPS() {
 
 // Handles GPS update and sends to map/game
 function handleNewPosition(pos) {
-    if(pos.coords.accuracy > 25){
-        console.log("not super accurate", pos.coords.accuracy)
-        return
-    }
+    // if(pos.coords.accuracy > 25){
+    //     console.log("not super accurate", pos.coords.accuracy)
+    //     return
+    // }
     console.log("accuracy", pos.coords.accuracy)
     const [lng, lat] = fixForChineseMap(pos);
 

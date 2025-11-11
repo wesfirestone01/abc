@@ -303,7 +303,8 @@ socket.on("locationFromServer", (data) => {
   let other = Players.find((p) => p.name === data.username);
   if (!other) {
     other = new Player(data.username, color(255, 0, 0));
-    Players.push(other);function drawLeaderboard() {
+    Players.push(other);
+    function drawLeaderboard() {
 
     }
   }
