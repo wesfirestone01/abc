@@ -91,7 +91,7 @@ function draw() {
     if (!ping.active) Pings.splice(i, 1);
   }
 
-  drawLeaderboard();
+  // drawLeaderboard();
   drawNotifications();
 }
 
