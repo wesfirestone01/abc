@@ -91,7 +91,7 @@ function draw() {
     if (!ping.active) Pings.splice(i, 1);
   }
 
-  // drawLeaderboard();
+  drawLeaderboard();
   drawNotifications();
 }
 
@@ -304,10 +304,10 @@ socket.on("locationFromServer", (data) => {
   if (!other) {
     other = new Player(data.username, color(255, 0, 0));
     Players.push(other);
-    function drawLeaderboard() {
-
-    }
   }
+});
+
+function drawLeaderboard() {
   let alivePlayers = Players.filter(p=>p.alive);
   let redTeam = alivePlayers.filter(p=>p.team==="Red");
   let blueTeam = alivePlayers.filter(p=>p.team==="Blue");
@@ -330,7 +330,7 @@ socket.on("locationFromServer", (data) => {
     fill(p.alive?0:color(255,0,0));
     text(`• ${p.name}`,35,y);
     y+=14;
-  }
+  
 
   y+=10;
   fill(80,120,255);
@@ -341,5 +341,5 @@ socket.on("locationFromServer", (data) => {
     text(`• ${p.name}`,35,y);
     y+=14;
   }
-})
-  
+  }
+}
