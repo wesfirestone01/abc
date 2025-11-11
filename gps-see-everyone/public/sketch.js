@@ -111,7 +111,7 @@ class Player {
     this.y = 0;
     this.goalX = 0;
     this.goalY = 0;
-    this.rad = 12;
+    this.rad = 8;
     this.alive = true;
   }
 
@@ -186,7 +186,7 @@ class PingProjectile {
     if (!this.active) return;
     fill(255, 255, 0, 150);
     noStroke();
-    ellipse(this.x, this.y, 1);
+    ellipse(this.x, this.y, 3);
   }
 }
   
