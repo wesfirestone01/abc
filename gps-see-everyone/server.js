@@ -4,10 +4,9 @@ const fs = require("fs");
 const app = express();
 const portHTTPS = 4210;
 
-// Serve static files
 app.use(express.static("public"));
 
-// SSL certificates (make sure these files exist)
+
 const options = {
   key: fs.readFileSync("localhost-key.pem"),
   cert: fs.readFileSync("localhost.pem"),
@@ -19,17 +18,16 @@ const HTTPSserver = https.createServer(options, app);
 const { Server } = require("socket.io");
 const io = new Server(HTTPSserver);
 
-// Track connected players
-let players = {}; // key: socket.id
+let players = {};
 let currentlyConnected = [];
 
-// ====================== SOCKET CONNECTION ======================
+//socket connection
+
 io.on("connection", (socket) => {
   console.log("New connection:", socket.id);
   currentlyConnected.push(socket.id);
   console.log("Connected clients:", currentlyConnected);
 
-  // ------------------- NEW PLAYER -------------------
   socket.on("newPlayer", (data) => {
     if (!data || !data.username) return;
 
@@ -70,14 +68,13 @@ io.on("connection", (socket) => {
   });
 
 
-  // ------------------- LOCATION UPDATE -------------------
+  // location uodate
   socket.on("locationFromClient", (data) => {
     if (!data || !players[socket.id]) return;
 
     players[socket.id].lat = data.lat;
     players[socket.id].lon = data.lon;
 
-    // Broadcast to everyone else
     socket.broadcast.emit("locationFromServer", {
       username: players[socket.id].username,
       team: players[socket.id].team,
@@ -86,18 +83,21 @@ io.on("connection", (socket) => {
     });
   });
 
-  // ------------------- PROJECTILE FIRE -------------------
-  socket.on("fireProjectile", (data) => {
-    if (!data || !data.shooterName || !data.targetName) return;
+  // projectile fire
+socket.on("fireProjectile", (data) => {
+  if (!data || !data.shooterName || !data.targetName) return;
 
-    console.log(`Projectile fired: ${data.shooterName} -> ${data.targetName}`);
-        if(data.shooterName)
+  // prevent firendly fire
+  if (data.shooterTeam === data.targetTeam) {
+    console.log(`Friendly fire blocked: ${data.shooterName} -> ${data.targetName}`);
+    return;
+  }
 
-    // Relay to all other players
-    socket.broadcast.emit("projectileFired", data);
-  });
+  console.log(`Projectile fired: ${data.shooterName} -> ${data.targetName}`);
+  socket.broadcast.emit("projectileFired", data);
+});
 
-  // ------------------- DISCONNECT -------------------
+  //disconetion
   socket.on("disconnect", () => {
     console.log(`Player ${socket.username} disconnected`);
 
@@ -113,15 +113,14 @@ io.on("connection", (socket) => {
   });
 });
 
-// ====================== SAFEZONE ======================
-// ====================== SAFEZONE ======================
+
 let Safezone = {
   lat: 31.2260997,
   lon: 121.5338220,
   radius: 60,
-  totalTime: 30 * 1000, // 30 seconds for quicker jumps
+  totalTime: 60 * 1000,  // 1min timer
   startTime: Date.now(),
-  color: { r:0, g:255, b:0 } // send RGB directly
+  color: { r:0, g:255, b:0 } 
 };
 
 setInterval(() => {
@@ -134,9 +133,9 @@ setInterval(() => {
   else if (t > 0.3) Safezone.color = {r:255, g:255, b:0};
   else Safezone.color = {r:255, g:0, b:0};
 
-  // Move safezone when timer ends
+  // move safezone
   if (elapsed >= Safezone.totalTime) {
-    Safezone.lat += (Math.random() - 0.5) * 0.00036; // ~40 meters
+    Safezone.lat += (Math.random() - 0.5) * 0.00036; 
     Safezone.lon += (Math.random() - 0.5) * 0.00036;
     Safezone.startTime = now;
   }
@@ -145,7 +144,6 @@ setInterval(() => {
 }, 1000);
 
 
-// ====================== START SERVER ======================
 HTTPSserver.listen(portHTTPS, () => {
   console.log(`HTTPS Server running on port ${portHTTPS}`);
 });

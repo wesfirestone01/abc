@@ -1,6 +1,6 @@
-let Players = [];       // All players (you + others)
-let Pings = [];         // Active projectiles
-let Safezones = [];     // Circular zones
+let Players = [];       
+let Pings = [];         
+let Safezones = [];    
 let Notifications = [];
 
 let mappa = new Mappa('Leaflet');
@@ -30,7 +30,6 @@ let mappa_options = {
   style: "https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}",
 };
  
-// -------------- SETUP ----------------
 function setup() {
   canvas = createCanvas(windowWidth, windowHeight);
   canvas.parent("p5-canvas-container");
@@ -41,13 +40,13 @@ function setup() {
   me = new Player(username, color(0, 150, 255), "Blue");
   Players.push(me);
 
-  // Safezone (fixed position)
+  //safezone NYUSH
   let safeLat = 31.226099721335896;
   let safeLon = 121.53382201224352;
   const safezoneRadius = 60;
   Safezones.push(new SafezoneGPS(safeLat, safeLon, safezoneRadius));
 
-  // Test enemy near the player
+  // test player enemy 
   enemy = new Player("TestEnemy", color(255, 50, 50), "Red");
   enemy.lat = safeLat + 0.005; 
   enemy.lon = safeLon + .005;
@@ -56,7 +55,7 @@ function setup() {
   requestGPS();
 }
 
-// -------------- DRAW ----------------
+//draw
 function draw() {
   clear();
 
@@ -75,19 +74,16 @@ function draw() {
   fill(0, 160);
   rect(0, 0, width, height);
 
-  // Safezones
   for (let s of Safezones) {
     s.update();
     s.display();
   }
 
-  // Players
   for (let p of Players) {
     p.update();
     p.display();
   }
 
-  // Projectiles
   for (let i = Pings.length - 1; i >= 0; i--) {
     let ping = Pings[i];
     ping.update();
@@ -99,7 +95,6 @@ function draw() {
   drawNotifications();
 }
 
-// -------------- PLAYER ----------------
 class Player {
   constructor(name, col, team) {
     this.name = name;
@@ -133,18 +128,27 @@ class Player {
     noStroke();
     ellipse(this.x, this.y, this.rad * 2);
   }
+fireAt(target) {
+  if (!this.alive || !target.alive || !mapInit) return;
 
-  fireAt(target) {
-    if (!this.alive || !target.alive || !mapInit) return;
-    this.recalculatePosition();
-    target.recalculatePosition();
-    Pings.push(new PingProjectile({x: this.x, y: this.y, name: this.name}, target));
-    showNotification(`You fired a ping at ${target.name}`, color(100,200,255));
-    console.log(`Fired ping at ${target.name}`);
+  // TEAM CHECK: only fire at enemies
+  if (this.team === target.team) {
+    showNotification(`You cannot fire at a teammate!`, color(200,100,100));
+    return;
   }
+
+  this.recalculatePosition();
+  target.recalculatePosition();
+
+  Pings.push(new PingProjectile({x: this.x, y: this.y, name: this.name, team: this.team}, target));
+
+  socket.emit("fireProjectile", { shooterName: this.name, targetName: target.name, shooterTeam: this.team, targetTeam: target.team });
+
+  showNotification(`You fired a ping at ${target.name}`, color(100,200,255));
+  console.log(`Fired ping at ${target.name}`);
+}
 }
 
-// -------------- PROJECTILE ----------------
 class PingProjectile {
   constructor(pinger, target) {
     this.pinger = pinger;
@@ -156,25 +160,20 @@ class PingProjectile {
 
   update() {
     if (!this.active) return;
-
-    // Move toward target
+//lerp projectile
     this.x = lerp(this.x, this.target.x, projectile_speed);
     this.y = lerp(this.y, this.target.y, projectile_speed);
 
-    // Check if projectile reached the target
     let d = dist(this.x, this.y, this.target.x, this.target.y);
     if (d < this.target.rad) {
-      this.active = false; // projectile disappears once it hits the target
+      this.active = false; 
 
-      // Check if target is inside a safezone
       let inSafezone = Safezones.some(s => s.isTouching(this.target.x, this.target.y));
 
       if (inSafezone) {
-        // Target is safe — projectile hits but does not kill
         showNotification(`${this.pinger.name} fired at ${this.target.name}, but they are safe`, color(180, 180, 255));
         console.log(`${this.target.name} is in a safezone, not killed`);
       } else {
-        // Target is outside safezone — they get hit
         this.target.alive = false;
         showNotification(`You were pinged by ${this.pinger.name}`, color(255, 80, 80));
         console.log(`${this.target.name} was hit`);
@@ -191,7 +190,6 @@ class PingProjectile {
 }
   
 
-// -------------- SAFEZONE ----------------
 class SafezoneGPS {
   constructor(lat, lon, radius) {
     this.lat = lat;
@@ -224,7 +222,7 @@ class SafezoneGPS {
   }
 }
 
-// -------------- NOTIFICATIONS ----------------
+//notification
 function showNotification(msg, col) {
   Notifications.push({msg, col, alpha:255, time: millis()});
   console.log("Notification:", msg);
@@ -250,7 +248,6 @@ function drawNotifications() {
   }
 }
 
-// -------------- TOUCH ----------------
 function touchStarted() {
   if (!enemy.alive) return false;
 
@@ -264,12 +261,10 @@ function touchStarted() {
   return false;
 }
 
-// -------------- RESIZE ----------------
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
 }
 
-// -------------- MAP UPDATE ----------------
 function updateMapContent() {
   for (let p of Players) p.recalculatePosition();
   for (let s of Safezones) s.recalculatePosition();
@@ -281,7 +276,6 @@ socket.on("projectileFired", (data) => {
     Pings.push(new PingProjectile(shooter, target));
   }
 
-  // Optional notifications
   if (data.targetName === username) {
     showNotification(`You were pinged by ${data.shooterName}`, color(255, 80, 80));
   } else if (data.shooterName === username) {
@@ -291,19 +285,19 @@ socket.on("projectileFired", (data) => {
   }
 });
 
+//safezone update socket on
 socket.on("safezoneUpdate", (data) => {
   if (!Safezones[0]) return;
 
-  // Update position
   Safezones[0].lat = data.lat;
   Safezones[0].lon = data.lon;
   Safezones[0].recalculatePosition();
+  //color update
 
-  // Update color directly
   Safezones[0].currentColor = color(data.r, data.g, data.b, 90);
 });
 
-// -------------- LEADERBOARD ----------------
+
 function drawLeaderboard() {
   let alivePlayers = Players.filter(p=>p.alive);
   let redTeam = alivePlayers.filter(p=>p.team==="Red");
