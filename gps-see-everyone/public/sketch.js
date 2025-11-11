@@ -16,8 +16,8 @@ let username = "";
 let socket;
 
 // -------------- SOCKET ----------------
-if (location.hostname.toLowerCase().startsWith("browsercircus")) {
-  socket = io({ path: "/gps-see-everyone/socket.io" });
+if (location.hostname.toLowerCase().startsWith("browsercircus") || location.hostname.toLowerCase().startsWith("www")) {
+  socket = io({ path: "/wes/port-4210/socket.io" });
 } else {
   socket = io(); 
 }
