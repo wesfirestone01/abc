@@ -41,8 +41,8 @@ function setup() {
   Players.push(me);
 
   //safezone NYUSH
-  let safeLat = 31.226099721335896;
-  let safeLon = 121.53382201224352;
+  let safeLat = 31.149304;
+  let safeLon = 121.480687;
   const safezoneRadius = 60;
   Safezones.push(new SafezoneGPS(safeLat, safeLon, safezoneRadius));
 
