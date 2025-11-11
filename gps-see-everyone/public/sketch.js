@@ -298,7 +298,15 @@ socket.on("safezoneUpdate", (data) => {
 });
 
 
-function drawLeaderboard() {
+socket.on("locationFromServer", (data) => {
+  if (data.username === username) return;
+  let other = Players.find((p) => p.name === data.username);
+  if (!other) {
+    other = new Player(data.username, color(255, 0, 0));
+    Players.push(other);function drawLeaderboard() {
+
+    }
+  }
   let alivePlayers = Players.filter(p=>p.alive);
   let redTeam = alivePlayers.filter(p=>p.team==="Red");
   let blueTeam = alivePlayers.filter(p=>p.team==="Blue");
@@ -332,5 +340,5 @@ function drawLeaderboard() {
     text(`• ${p.name}`,35,y);
     y+=14;
   }
-}
+})
   
