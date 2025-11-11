@@ -62,6 +62,14 @@ io.on("connection", (socket) => {
     });
   });
 
+  socket.on("playerPinged", (data) => {
+    const { shooter, target } = data;
+    console.log(` ${shooter} pinged (killed) ${target}`);
+
+    io.emit("playerKilled", { shooter, target });
+  });
+
+
   // ------------------- LOCATION UPDATE -------------------
   socket.on("locationFromClient", (data) => {
     if (!data || !players[socket.id]) return;
@@ -83,6 +91,7 @@ io.on("connection", (socket) => {
     if (!data || !data.shooterName || !data.targetName) return;
 
     console.log(`Projectile fired: ${data.shooterName} -> ${data.targetName}`);
+        if(data.shooterName)
 
     // Relay to all other players
     socket.broadcast.emit("projectileFired", data);
