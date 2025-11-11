@@ -157,39 +157,39 @@ class PingProjectile {
   update() {
     if (!this.active) return;
 
+    // Move toward target
     this.x = lerp(this.x, this.target.x, projectile_speed);
     this.y = lerp(this.y, this.target.y, projectile_speed);
 
-    // disappear if hits a safezone
-    for (let s of Safezones) {
-      if (s.isTouching(this.x, this.y)) {
-        this.active = false;
-        return;
-      }
-    }
-
+    // Check if projectile reached the target
     let d = dist(this.x, this.y, this.target.x, this.target.y);
-    if (d < this.target.rad && this.target.alive) {
-      this.active = false;
+    if (d < this.target.rad) {
+      this.active = false; // projectile disappears once it hits the target
+
+      // Check if target is inside a safezone
       let inSafezone = Safezones.some(s => s.isTouching(this.target.x, this.target.y));
+
       if (inSafezone) {
-        showNotification(`${this.pinger.name} fired at you, but you are safe`, color(180,180,255));
-        console.log("Target in safezone, safe");
+        // Target is safe — projectile hits but does not kill
+        showNotification(`${this.pinger.name} fired at ${this.target.name}, but they are safe`, color(180, 180, 255));
+        console.log(`${this.target.name} is in a safezone, not killed`);
       } else {
+        // Target is outside safezone — they get hit
         this.target.alive = false;
-        showNotification(`You were pinged by ${this.pinger.name}`, color(255,80,80));
-        console.log(`${this.target.name} hit by projectile`);
+        showNotification(`You were pinged by ${this.pinger.name}`, color(255, 80, 80));
+        console.log(`${this.target.name} was hit`);
       }
     }
   }
-
+    
   display() {
     if (!this.active) return;
-    fill(255,255,0,150);
+    fill(255, 255, 0, 150);
     noStroke();
     ellipse(this.x, this.y, 10);
   }
 }
+  
 
 // -------------- SAFEZONE ----------------
 class SafezoneGPS {
@@ -311,3 +311,4 @@ function drawLeaderboard() {
     y+=14;
   }
 }
+  
