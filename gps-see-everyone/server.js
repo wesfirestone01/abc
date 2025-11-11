@@ -114,37 +114,36 @@ io.on("connection", (socket) => {
 });
 
 // ====================== SAFEZONE ======================
+// ====================== SAFEZONE ======================
 let Safezone = {
   lat: 31.2260997,
   lon: 121.5338220,
   radius: 60,
-  totalTime: 10 * 60 * 1000, // 10 minutes
+  totalTime: 30 * 1000, // 30 seconds for quicker jumps
   startTime: Date.now(),
-  color: "green"
+  color: { r:0, g:255, b:0 } // send RGB directly
 };
 
-// Update safezone every second
 setInterval(() => {
   const now = Date.now();
   const elapsed = now - Safezone.startTime;
-  const remaining = Math.max(0, Safezone.totalTime - elapsed);
-  const t = remaining / Safezone.totalTime;
+  const t = Math.max(0, Safezone.totalTime - elapsed) / Safezone.totalTime;
 
   // Color logic
-  if (t > 0.7) Safezone.color = "green";
-  else if (t > 0.3) Safezone.color = "yellow";
-  else Safezone.color = "red";
+  if (t > 0.7) Safezone.color = {r:0, g:255, b:0};
+  else if (t > 0.3) Safezone.color = {r:255, g:255, b:0};
+  else Safezone.color = {r:255, g:0, b:0};
 
-  // Move safezone if time is up
+  // Move safezone when timer ends
   if (elapsed >= Safezone.totalTime) {
-    // Move ~50ft (~0.000015 degrees)
-    Safezone.lat += (Math.random() - 0.5) * 0.00003;
-    Safezone.lon += (Math.random() - 0.5) * 0.00003;
-    Safezone.startTime = now; // reset timer
+    Safezone.lat += (Math.random() - 0.5) * 0.00036; // ~40 meters
+    Safezone.lon += (Math.random() - 0.5) * 0.00036;
+    Safezone.startTime = now;
   }
 
-  io.emit("safezoneUpdate", Safezone);
+  io.emit("safezoneUpdate", { lat: Safezone.lat, lon: Safezone.lon, r: Safezone.color.r, g: Safezone.color.g, b: Safezone.color.b });
 }, 1000);
+
 
 // ====================== START SERVER ======================
 HTTPSserver.listen(portHTTPS, () => {

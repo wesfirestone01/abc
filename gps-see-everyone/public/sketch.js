@@ -29,7 +29,7 @@ let mappa_options = {
   zoom: 17,
   style: "https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}",
 };
-
+ 
 // -------------- SETUP ----------------
 function setup() {
   canvas = createCanvas(windowWidth, windowHeight);
@@ -186,7 +186,7 @@ class PingProjectile {
     if (!this.active) return;
     fill(255, 255, 0, 150);
     noStroke();
-    ellipse(this.x, this.y, 10);
+    ellipse(this.x, this.y, 1);
   }
 }
   
@@ -216,7 +216,7 @@ class SafezoneGPS {
   display() {
     fill(this.currentColor);
     noStroke();
-    ellipse(this.currentPos.x, this.currentPos.y, this.radius * .5);
+    ellipse(this.currentPos.x, this.currentPos.y, this.radius * .2);
   }
 
   isTouching(x,y) {
@@ -274,6 +274,34 @@ function updateMapContent() {
   for (let p of Players) p.recalculatePosition();
   for (let s of Safezones) s.recalculatePosition();
 }
+socket.on("projectileFired", (data) => {
+  let shooter = Players.find(p => p.name === data.shooterName);
+  let target = Players.find(p => p.name === data.targetName);
+  if (shooter && target) {
+    Pings.push(new PingProjectile(shooter, target));
+  }
+
+  // Optional notifications
+  if (data.targetName === username) {
+    showNotification(`You were pinged by ${data.shooterName}`, color(255, 80, 80));
+  } else if (data.shooterName === username) {
+    showNotification(`You fired a ping at ${data.targetName}`, color(100, 200, 255));
+  } else {
+    showNotification(`${data.shooterName} pinged ${data.targetName}`, color(255, 255, 0));
+  }
+});
+
+socket.on("safezoneUpdate", (data) => {
+  if (!Safezones[0]) return;
+
+  // Update position
+  Safezones[0].lat = data.lat;
+  Safezones[0].lon = data.lon;
+  Safezones[0].recalculatePosition();
+
+  // Update color directly
+  Safezones[0].currentColor = color(data.r, data.g, data.b, 90);
+});
 
 // -------------- LEADERBOARD ----------------
 function drawLeaderboard() {

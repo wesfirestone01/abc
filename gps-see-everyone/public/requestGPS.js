@@ -1,7 +1,7 @@
 let GPS_GRANTED = false;
 let GPS_options = {
     enableHighAccuracy: true,
-    timeout: 10000,
+    timeout: 5000,
     maximumAge: 0,
 };
 
