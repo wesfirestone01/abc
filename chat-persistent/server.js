@@ -23,6 +23,7 @@ let HTTPSserver = https.createServer(options, app)
 
 
 const { Server } = require('socket.io'); // include library
+const { json } = require('stream/consumers');
 const io = new Server(HTTPSserver); // start socket io 
 
 // socket.id -> { userId, username }
@@ -31,6 +32,20 @@ let sockets = {};
 let users = {};  
 
 let messages = []
+
+let DATA_PATH = "chat-history.json";
+
+try {
+  if (fs.existsSync(DATA_PATH)) {
+    const file = fs.readFileSync(DATA_PATH, 'utf8');
+    messages = JSON.parse(file);
+    console.log('Loaded chat history:', messages.length, 'messages');
+  }
+} catch (err) {
+  console.log('Could not load chat history, starting empty');
+  messages = [];
+}
+
 
 io.on('connection', (socket) => {
 
@@ -55,7 +70,8 @@ io.on('connection', (socket) => {
     })
 
     socket.on("name-change", function(data){
-        // handle change of username
+        sockets[socket.id].username = data.newUsername; 
+
     })
 
     socket.on("message-from-client", function(data){
@@ -64,9 +80,20 @@ io.on('connection', (socket) => {
             message: data.message,
             sender: sockets[socket.id]
             
+
         }
-        
+
+
+        //save to new messages array to the local json file
+        messages.push(message);
         // message object shoylt contain message, username and userID
+
+        //APPEND MESSAGE TO RUNTIME MESSAGES OBJECT
+
+        
+        let stringifiedMessages = JSON.stringify(messages )
+        fs.writeFileSync(DATA_PATH, stringifiedMessages,'utf-8'); 
+        // send to all cleints 
 
 
         messages.push(message)
