@@ -44,7 +44,7 @@ socket.on("updateCount", (count) => {
 function draw() {
   background(230);
   drawGardenBox();
-if(myFlowerCount < 200) {
+if(myFlowerCount < 500) {
     text("Garden is sad", 30, 59);
 } else {
   text("Garden is happy",30, 59);
