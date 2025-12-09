@@ -32,19 +32,23 @@ socket.on("updateCount", (count) => {
   console.log("Updated count:", count);
 });
 
-  // Receive age updates
-  socket.on("updateAges", (serverGarden) => {
-    serverGarden.flowers.forEach(sf => {
-      let local = flowers.find(f => f.id === sf.id);
-      if (local) local.age = sf.age;
-    });
-  });
+  // // Receive age updates
+  // socket.on("updateAges", (serverGarden) => {
+  //   serverGarden.flowers.forEach(sf => {
+  //     let local = flowers.find(f => f.id === sf.id);
+  //     if (local) local.age = sf.age;
+  //   });
+  // });
 }
 
 function draw() {
   background(230);
   drawGardenBox();
-
+if(myFlowerCount < 200) {
+    text("Garden is sad", 30, 59);
+} else {
+  text("Garden is happy",30, 59);
+}
   fill(0);
   textSize(20);
   text("Flowers planted: " + myFlowerCount, 30, 40);

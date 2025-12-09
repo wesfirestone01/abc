@@ -36,6 +36,7 @@ socket.on("flowerCount", ({ username, count }) => {
   console.log(username, "has planted", count, "flowers");
   socket.emit("updateCount", count);
 });
+
   //  a player plants a flower
   socket.on("plantFlower", (data) => {
     let flower = {
@@ -46,7 +47,6 @@ socket.on("flowerCount", ({ username, count }) => {
 
     globalFlowers.push(flower);
 
-    // 🔥 BROADCAST TO EVERYONE
     io.emit("flowerPlanted", flower);
   });
 
@@ -56,13 +56,13 @@ socket.on("flowerCount", ({ username, count }) => {
 });
 
 
-// 🌼 GLOBAL AGE UPDATE
-setInterval(() => {
-  globalFlowers.forEach(f => f.age++);
+// // // 🌼 GLOBAL AGE UPDATE
+// // setInterval(() => {
+// //   globalFlowers.forEach(f => f.age++);
 
-  // broadcast updated ages to all clients
-  io.emit("updateAges", globalFlowers);
-}, 1000);
+//   // broadcast updated ages to all clients
+//   io.emit("updateAges", globalFlowers);
+// }, 1000);
 
 
 HTTPSserver.listen(portHTTPS, () => {
