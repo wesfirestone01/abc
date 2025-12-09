@@ -3,8 +3,18 @@ let socket;
 let username;
 let myFlowerCount = 0; 
 
+
+// start socket
+if(location.hostname.toLowerCase().startsWith('browsercircus') || location.hostname.toLowerCase().startsWith('www')){
+  socket = io({path: "/wes/port-4210/socket.io"});  // yields '/leon/port-4100/socket.io' or '/socket.io'
+}else{
+  socket = io(); 
+}
+
+
+
 function setup() {
-  socket = io();
+  // socket = io();
 
 
   let c = createCanvas(windowWidth, windowHeight - 50);

@@ -6,6 +6,10 @@ function setup() {
   let c = createCanvas(windowWidth, windowHeight - 50);
   c.parent("p5-container");
 
+  socket.on("flowerPlanted", (flowerData) => {
+    console.log("received from server:", flowerData);
+    flowers.push(new Flower(flowerData));
+  });
 }
 
 function draw() {
@@ -21,12 +25,15 @@ function draw() {
 function touchStarted(){
   let data = makeFlowerData(mouseX, mouseY);
   console.log(data);
+  socket.maxHeight("plantFlower",flowerData);
 
 
 
   // the golowing part will actually happen in a socket listeing event, not HERE
 
-  let f = new Flower(data);
+  //let f = new Flower(data);
+  socket.emit("plantFlower", data);
+
 
 }
 
@@ -88,7 +95,7 @@ class Flower {
 
     this.x = data.x;
     this.y = data.y;
-    // this.type = type;
+    this.type = type;
 
     this.age = Date.now() - data.birthMoment;
     this.growth = 0;
@@ -97,6 +104,7 @@ class Flower {
     this.maxHeight = data.maxHeight;
     this.maxBudSize = random(5, 10);
     this.sizeD = 0;
+
 
     this.stemCol = random(["#6FD72B", "#4CAF50", "#2E8524", "#65FF00", "#BAEB33"]);
 

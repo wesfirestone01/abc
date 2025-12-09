@@ -57,7 +57,7 @@ io.on("connection", (socket) => {
 
 
 
-  io.on("plantFlower", (data) => {
+  socket.on("plantFlower", (data) => {
     const username = socket.username;
     if (!username) return;
     if (!gardens[username]) return;
@@ -79,7 +79,7 @@ io.on("connection", (socket) => {
 
     gardens[username].flowers.push(flower);
 
-    socket.emit("flowerPlanted", flower);
+    socket.emit("flowerPlanted", flower); //emit it back to cleint 
   });
 
 
