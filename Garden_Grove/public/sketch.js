@@ -1,194 +1,278 @@
 let flowers = [];
 let socket;
 let username;
-let myFlowerCount = 0; 
 
+let globalLivingCount = 0;
+let globalDeadCount = 0;
 
-// start socket
-if(location.hostname.toLowerCase().startsWith('browsercircus') || location.hostname.toLowerCase().startsWith('www')){
-  socket = io({path: "/wes/port-4210/socket.io"});  // yields '/leon/port-4100/socket.io' or '/socket.io'
-}else{
-  socket = io(); 
+let lastPlantTime = 0;
+let killFeed = [];
+
+const UI_HEIGHT = 90;
+const HAPPY_THRESHOLD = 200;
+
+if (
+  location.hostname.toLowerCase().startsWith("browsercircus") ||
+  location.hostname.toLowerCase().startsWith("www")
+) {
+  socket = io({ path: "/wes/port-4210/socket.io" });
+} else {
+  socket = io();
 }
 
-
-
 function setup() {
-  // socket = io();
-
-
-  let c = createCanvas(windowWidth, windowHeight - 50);
+  let c = createCanvas(windowWidth, windowHeight);
   c.parent("p5-container");
-username = prompt("Enter your name:")
- 
-  // Receive flower from server
-  socket.on("flowerPlanted", (flowerData) => {
-    console.log("RECEIVED FROM SERVER:", flowerData);
-    flowers.push(new Flower(flowerData));
 
+  pixelDensity(1);
+  textFont("Arial");
+
+  username = prompt("Enter your name:");
+
+  socket.on("loadGarden", (garden) => {
+    flowers = garden.map(f => new Flower(f));
   });
-socket.on("updateCount", (count) => {
-  myFlowerCount = count;     
-  console.log("Updated count:", count);
-});
 
-  // // Receive age updates
-  // socket.on("updateAges", (serverGarden) => {
-  //   serverGarden.flowers.forEach(sf => {
-  //     let local = flowers.find(f => f.id === sf.id);
-  //     if (local) local.age = sf.age;
-  //   });
-  // });
+  socket.on("flowerPlanted", (data) => {
+    flowers.push(new Flower(data));
+  });
+
+  socket.on("flowerKilled", ({ killer, victim }) => {
+    killFeed.push(`${killer} killed ${victim}'s flower`);
+    if (killFeed.length > 5) killFeed.shift();
+  });
+
+  socket.on("gardenCountUpdate", (data) => {
+    globalLivingCount = data.living;
+    globalDeadCount = data.dead;
+  });
 }
 
 function draw() {
-  background(230);
+  background(70, 60, 50);
+
+  // ---------- UI ----------
+  fill(230);
+  textSize(18);
+  text(`Flowers in garden: ${globalLivingCount}`, 20, 30);
+
+  textSize(14);
+  text(`Flowers killed overall: ${globalDeadCount}`, 20, 52);
+
+ if( globalLivingCount >= HAPPY_THRESHOLD)
+    text("Garden is happy",20,72);
+  else {
+     text("Garden is sad",20,72);
+  }
+  
+
+  textAlign(RIGHT);
+  textSize(12);
+  killFeed.forEach((k, i) => {
+    text(k, width - 20, 30 + i * 16);
+  });
+  textAlign(LEFT);
+
+  push();
+  translate(0, UI_HEIGHT);
   drawGardenBox();
-if(myFlowerCount < 500) {
-    text("Garden is sad", 30, 59);
-} else {
-  text("Garden is happy",30, 59);
-}
-  fill(0);
-  textSize(20);
-  text("Flowers planted: " + myFlowerCount, 30, 40);
 
-
+  let now = millis();
   for (let f of flowers) {
     f.update();
     f.draw();
   }
-}
-//send flwoer to server
-function mousePressed() {
-  let data = makeFlowerData(mouseX, mouseY);
-  console.log("plantFlower!", data);
-  socket.emit("plantFlower", data);
-myFlowerCount ++;
-  socket.emit("flowerCount", {
-    username: username,
-    count: myFlowerCount
-  });
+
+  flowers = flowers.filter(f => !f.dead || now - f.deadTime < 30000);
+
+  pop();
+
+  fill(220);
+  textAlign(CENTER);
+  textSize(11);
+
+  for (let f of flowers) {
+    let lx = f.x;
+    let ly = f.y + UI_HEIGHT - f.stemGrowth - 10;
+
+    if (dist(mouseX, mouseY, lx, ly) < 25) {
+      text(f.owner, lx, ly);
+    }
+  }
+
+  textAlign(LEFT);
 }
 
-//flower data
-function makeFlowerData(x, y){
+function mousePressed() {
+  plantAt(mouseX, mouseY);
+}
+
+function touchStarted() {
+  if (touches.length > 0) {
+    plantAt(touches[0].x, touches[0].y);
+  }
+  return false;
+}
+
+function plantAt(x, y) {
+  if (y < UI_HEIGHT) return;
+
+  let now = millis();
+  let speedPenalty = constrain(400 - (now - lastPlantTime), 0, 400);
+  lastPlantTime = now;
+
+  let data = makeFlowerData(x, y - UI_HEIGHT);
+  data.growthPenalty = speedPenalty / 400;
+
+  socket.emit("plantFlower", data);
+}
+
+function makeFlowerData(x, y) {
   let petalOffsets = [];
-  for (let i = 0; i < 5; i++) petalOffsets.push(random(-5, 5));
+  for (let i = 0; i < 5; i++) petalOffsets.push(random(-6, 6));
 
   return {
     id: Date.now() + "_" + Math.random(),
-    x, y,
-    type: "daisy",
+    x,
+    y,
+    owner: username,
 
     maxBudSize: random(5, 10),
-    maxHeight: random(40, 190),
+    maxHeight: random(80, 180),
 
-    stemColor: random(["#6FD72B", "#4CAF50", "#2E8524", "#65FF00", "#BAEB33"]),
-
+    stemColor: random(["#6FD72B", "#4CAF50", "#2E8524"]),
     petalOffsets,
-    petalNum: random(3, 20),
-    petalSize: random(50, 100),
-    petalJagedness: random(2, 10),
-    petalColor: random(["#4f5bdb", "#66cdaa", "#00a4b2", "#FFEB3B", "#FF5722"]),
-    petalCenterColor: random(["#ffee44", "#171516", "#3377aa"]),
+    petalNum: random(6, 18),
+    petalSize: random(40, 90),
+    petalColor: random(["#4f5bdb", "#66cdaa", "#FFEB3B", "#FF5722"]),
+    petalCenterColor: "#222",
 
-    birthMoment: Date.now(),
     age: 0
   };
 }
-//flower clas
+
 class Flower {
   constructor(data) {
     Object.assign(this, data);
-
-    this.growth = 0;
-    this.stemGrowth = 0;
+    this.age = 0;
     this.sizeD = 0;
-
-    this.types = {
-      daisy: {
-        petals: data.petalNum,
-        size: data.petalSize,
-        jaggedness: data.petalJagedness,
-        petalColor: data.petalColor,
-        centerColor: data.petalCenterColor
-      }
-    };
+    this.desat = 0;
+    this.health = 1;
+    this.dead = false;
+    this.deadTime = null;
+    this.growthPenalty = data.growthPenalty || 0;
   }
 
   update() {
-    // smooth animation client-side
-    this.age += 1;
+    this.age++;
 
-    // growth factor 0 → 1
-    this.growth = constrain(this.age / 20, 0, 1);
+    this.growth = constrain(
+      this.age / (140 + this.growthPenalty * 120),
+      0,
+      1
+    );
 
-    // stem grows upward
-    this.stemGrowth = lerp(0, this.maxHeight, this.growth);
+    let neighbors = 0;
+    for (let f of flowers) {
+      if (f !== this && dist(this.x, this.y, f.x, f.y) < 65) {
+        neighbors++;
+      }
+    }
 
-    // bud expands
-    this.sizeD += 0.05;
-    this.budGrowth = constrain(this.sizeD, 0, this.maxBudSize);
+    this.desat = constrain(map(neighbors, 0, 6, 0, 255), 0, 255);
+    this.health = map(this.desat, 0, 255, 1, 0.3);
+
+    this.stemGrowth = lerp(0, this.maxHeight * this.health, this.growth);
+
+    this.sizeD += 0.03;
+    this.budGrowth = constrain(
+      this.sizeD,
+      0,
+      this.maxBudSize * this.health
+    );
+
+    if (this.desat >= 240 && !this.dead) {
+      this.dead = true;
+      this.deadTime = millis();
+
+      let killer = this.findKiller() || this.owner;
+
+      socket.emit("flowerKilled", {
+        flowerId: this.id,
+        killer,
+        victim: this.owner
+      });
+    }
+  }
+
+  findKiller() {
+    let closest = null;
+    let minDist = Infinity;
+    for (let f of flowers) {
+      if (f !== this) {
+        let d = dist(this.x, this.y, f.x, f.y);
+        if (d < 65 && d < minDist) {
+          minDist = d;
+          closest = f.owner;
+        }
+      }
+    }
+    return closest;
   }
 
   draw() {
-
     push();
     translate(this.x, this.y);
+    scale(this.health);
 
-    this.drawStem();
-    translate(0, -this.stemGrowth);
-
-    let t = this.types[this.type];
-
-    // number of petals increases as it grows
-    let petals = floor(map(this.growth, 0, 1, 0, t.petals));
-
-    for (let i = 0; i < petals; i++) {
-      let angle = TWO_PI * (i / t.petals);
-      push();
-      rotate(angle);
-      translate(-20, 40);
-
-      //petal size grows with flower
-      this.drawJaggedPetal(t.size * this.growth, t.jaggedness, t.petalColor);
-
-      pop();
-    }
-
-    fill(t.centerColor);
-    noStroke();
-    circle(0, 0, this.budGrowth);
-
-    pop();
-  }
-
-  drawStem() {
     stroke(this.stemColor);
     strokeWeight(2);
     line(0, 0, 0, -this.stemGrowth);
+
+    translate(0, -this.stemGrowth);
+
+    let petals = floor(
+      map(this.growth, 0, 1, 0, this.petalNum * this.health)
+    );
+
+    for (let i = 0; i < petals; i++) {
+      let angle = TWO_PI * (i / this.petalNum);
+      push();
+      rotate(angle);
+      translate(-18, 35);
+      this.drawPetal(this.petalSize * this.growth * this.health);
+      pop();
+    }
+
+    fill(this.petalCenterColor);
+    noStroke();
+    circle(0, 0, this.budGrowth);
+    pop();
   }
 
-  drawJaggedPetal(length, jaggedness, col) {
-    fill(col);
+  drawPetal(length) {
+    let c = color(this.petalColor);
+    let gray = (red(c) + green(c) + blue(c)) / 3;
+    let mix = constrain(this.desat / 255, 0, 1);
+
+    fill(
+      lerp(red(c), gray, mix),
+      lerp(green(c), gray, mix),
+      lerp(blue(c), gray, mix)
+    );
+
     noStroke();
     beginShape();
     for (let i = 0; i < 5; i++) {
-      let x = this.petalOffsets[i];
-      let y = map(i, 0, 4, 0, -length);
-      vertex(x, y);
+      vertex(this.petalOffsets[i], map(i, 0, 4, 0, -length));
     }
     endShape(CLOSE);
   }
 }
-function drawGardenBox() {
-  fill("#5a3a1a");
-  rect(0, 0, width, height);
 
-  fill("#8b5a2b");
-  rect(0, 0, width, 20);
-  rect(0, height - 20, width, 20);
-  rect(0, 0, 20, height);
-  rect(width - 20, 0, 20, height);
+function drawGardenBox() {
+  noFill();
+  stroke("#8b5a2b");
+  strokeWeight(20);
+  rect(0, 0, width, height - UI_HEIGHT);
 }

@@ -3,7 +3,7 @@ const https = require("https");
 const fs = require("fs");
 
 const app = express();
-const portHTTPS = 4210;
+const PORT = 4210;
 
 app.use(express.static("public"));
 
@@ -12,42 +12,52 @@ const options = {
   cert: fs.readFileSync("localhost.pem"),
 };
 
-const HTTPSserver = https.createServer(options, app);
+const server = https.createServer(options, app);
 
 const { Server } = require("socket.io");
-const io = new Server(HTTPSserver, {
+const io = new Server(server, {
   cors: { origin: "*" }
 });
 
-
-// 🌼 GLOBAL — ALL PLAYERS SHARE ONE GARDEN
-let globalFlowers = [];
-let userFlowerCounts = {}; 
-
+let globalFlowers = {};
+let deadFlowerIds = new Set();
+let totalPlanted = 0;
 
 io.on("connection", (socket) => {
   console.log("Connected:", socket.id);
 
-  // give new player the whole global garden
-  socket.emit("loadGarden", globalFlowers);
+  socket.emit("loadGarden", Object.values(globalFlowers));
 
-socket.on("flowerCount", ({ username, count }) => {
-  userFlowerCounts[username] = count;
-  console.log(username, "has planted", count, "flowers");
-  socket.emit("updateCount", count);
-});
+  socket.emit("gardenCountUpdate", {
+    living: totalPlanted - deadFlowerIds.size,
+    dead: deadFlowerIds.size
+  });
 
-  //  a player plants a flower
   socket.on("plantFlower", (data) => {
-    let flower = {
-      id: Date.now() + "_" + Math.random(),
-      ...data,
-      age: 0
-    };
+    if (globalFlowers[data.id]) return;
 
-    globalFlowers.push(flower);
+    globalFlowers[data.id] = data;
+    totalPlanted++;
 
-    io.emit("flowerPlanted", flower);
+    io.emit("flowerPlanted", data);
+
+    io.emit("gardenCountUpdate", {
+      living: totalPlanted - deadFlowerIds.size,
+      dead: deadFlowerIds.size
+    });
+  });
+
+  socket.on("flowerKilled", ({ flowerId, killer, victim }) => {
+    if (deadFlowerIds.has(flowerId)) return;
+
+    deadFlowerIds.add(flowerId);
+
+    io.emit("flowerKilled", { killer, victim });
+
+    io.emit("gardenCountUpdate", {
+      living: totalPlanted - deadFlowerIds.size,
+      dead: deadFlowerIds.size
+    });
   });
 
   socket.on("disconnect", () => {
@@ -55,16 +65,6 @@ socket.on("flowerCount", ({ username, count }) => {
   });
 });
 
-
-// // // 🌼 GLOBAL AGE UPDATE
-// // setInterval(() => {
-// //   globalFlowers.forEach(f => f.age++);
-
-//   // broadcast updated ages to all clients
-//   io.emit("updateAges", globalFlowers);
-// }, 1000);
-
-
-HTTPSserver.listen(portHTTPS, () => {
-  console.log(`HTTPS Server running on port ${portHTTPS}`);
+server.listen(PORT, () => {
+  console.log(`HTTPS server running at https://localhost:${PORT}`);
 });
